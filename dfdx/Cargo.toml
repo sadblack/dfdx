@@ -38,7 +38,7 @@ num-traits = { workspace = true }
 rand_distr = { workspace = true }
 
 [features]
-default = ["std", "fast-alloc", "cpu"]
+default = ["std", "fast-alloc", "cpu", "safetensors"]
 nightly = ["dfdx-core/nightly", "dfdx-derives/nightly"]
 
 std = ["dfdx-core/std"]

@@ -67,7 +67,7 @@ fn main() {
 
     let mnist_path = std::env::args()
         .nth(1)
-        .unwrap_or_else(|| "./datasets/MNIST/raw".to_string());
+        .unwrap_or_else(|| "../../datasets/MNIST/raw".to_string());
 
     println!("Loading mnist from args[1] = {mnist_path}");
     println!("Override mnist path with `cargo run --example 06-mnist -- <path to mnist>`");
