@@ -238,6 +238,8 @@ unit_safetensors!(usize);
 
 /// Extension method that calls [BuildOnDevice] and then [ResetParams].
 pub trait BuildModuleExt<M>: Sized {
+
+    
     fn build_module<E: Dtype>(&self, m: M) -> M::Built
     where
         M: BuildOnDevice<E, Self>,

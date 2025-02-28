@@ -22,6 +22,9 @@ const BLUE: &str = "\x1B[34m";
 // ANSI 转义序列：重置颜色
 const RESET: &str = "\x1B[0m";
 
+// ANSI 转义序列：红色前景色
+const RED: &str = "\x1B[31m";
+
 #[debug_handler]
 // 处理 POST 请求的函数
 async fn random_array(
@@ -48,7 +51,7 @@ async fn random_array(
         // print!("{} ", print_char);
 
         let print_char = if *val > 0.00001 {
-            format!("{}{}{}", BLUE, '1', RESET)
+            format!("{}{}{}", RED, '1', RESET)
         } else {
             "0".to_string()
         };
