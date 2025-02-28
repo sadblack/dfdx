@@ -14,11 +14,10 @@
 //! ```
 //! Then, you may run this example with:
 //! ```
-//! cargo run --example 06-mnist -- tmp/
+//! cargo run --example 12-mnist -- tmp/
 //! ```
 
-use std::time::Instant;
-
+use std::{path::Path, time::Instant};
 use indicatif::ProgressIterator;
 use mnist::*;
 use rand::prelude::{SeedableRng, StdRng};
@@ -64,13 +63,30 @@ const BATCH_SIZE: usize = 32;
 fn main() {
     // ftz substantially improves performance
     dfdx::flush_denormals_to_zero();
-
-    let mnist_path = std::env::args()
-        .nth(1)
-        .unwrap_or_else(|| "../../datasets/MNIST/raw".to_string());
+    let exe_path = std::env::current_exe().expect("Failed to get executable path");
+    println!("Executable path: {:?}", exe_path);
+    let mnist_path = std::env::args().nth(1).unwrap_or_else(|| {
+        let exe_dir = exe_path.parent().expect("Failed to get executable directory");
+        // 向上找三层目录
+        let base_dir = exe_dir
+            .parent()
+            .and_then(|d| d.parent())
+            .and_then(|d| d.parent())
+            .expect("Failed to find project root directory");
+        
+        let dataset_path = base_dir.join("datasets").join("MNIST").join("raw");
+        
+        // 检查路径是否存在
+        if !dataset_path.exists() {
+            println!("Warning: Dataset path does not exist: {:?}", dataset_path);
+            println!("Please ensure the MNIST dataset is downloaded to the correct location");
+        }
+        
+        dataset_path.to_str().expect("Invalid path").to_string()
+    });
 
     println!("Loading mnist from args[1] = {mnist_path}");
-    println!("Override mnist path with `cargo run --example 06-mnist -- <path to mnist>`");
+    println!("Override mnist path with `cargo run --example 12-mnist -- <path to mnist>`");
 
     let dev = AutoDevice::default();
     let mut rng = StdRng::seed_from_u64(0);
@@ -93,7 +109,7 @@ fn main() {
         )
     };
 
-    for i_epoch in 0..10 {
+    for i_epoch in 0..500 {
         let mut total_epoch_loss = 0.0;
         let mut num_batches = 0;
         let start = Instant::now();
@@ -117,16 +133,29 @@ fn main() {
         }
         let dur = Instant::now() - start;
 
+        let loss_num = BATCH_SIZE as f32 * total_epoch_loss / num_batches as f32;
+
         println!(
             "Epoch {i_epoch} in {:?} ({:.3} batches/s): avg sample loss {:.5}",
             dur,
             num_batches as f32 / dur.as_secs_f32(),
-            BATCH_SIZE as f32 * total_epoch_loss / num_batches as f32,
+            loss_num,
         );
     }
-
+    //保存权重
     #[cfg(feature = "safetensors")]
     model
-        .save_safetensors("06-mnist.npz")
+        .save_safetensors("12-mnist.safetensors")
         .expect("failed to save model");
 }
+
+    /*
+        1. 怎么把图片转为矩阵
+        2. 为什么转为 32 * 784 的矩阵。32 的意思是一次处理 32张，每行代表一张图片。使用的时候，只需保证 行是784就可以，如果输入列是1，输出的列也是 1
+        3. 优化策略是什么
+        4. 为什么选这些层
+        5. loss 怎么算的，意味着什么
+        6. batch 有什么用
+
+
+     */

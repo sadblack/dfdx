@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>MNIST手写数字识别</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            background-color: #f4f4f4;
+        }
+
+       .container {
+            display: flex;
+            gap: 20px;
+            padding: 20px;
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        }
+
+       .panel {
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        canvas {
+            border: 1px solid #999;
+            margin-bottom: 10px;
+        }
+
+        #previewCanvas {
+            image-rendering: pixelated;
+            width: 56px;
+            height: 56px;
+        }
+
+        button {
+            padding: 5px 10px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <!-- 左侧画板 -->
+        <div class="panel">
+            <canvas id="drawCanvas" width="280" height="280"></canvas>
+            <div>
+                <button onclick="clearCanvas()">清除</button>
+                <button onclick="processAndPredict()">立即识别</button>
+            </div>
+        </div>
+
+        <!-- 中间预览 -->
+        <div class="panel">
+            <canvas id="previewCanvas" width="28" height="28"></canvas>
+            <div>28x28 预览（放大显示）</div>
+        </div>
+
+        <!-- 右侧结果 -->
+        <div class="panel">
+            <canvas id="resultCanvas" width="600" height="350"></canvas>
+            <div>识别结果</div>
+        </div>
+    </div>
+
+    <script>
+        // 初始化画板
+        const drawCanvas = document.getElementById('drawCanvas');
+        const previewCanvas = document.getElementById('previewCanvas');
+        const resultCanvas = document.getElementById('resultCanvas');
+        const ctx = drawCanvas.getContext('2d', { willReadFrequently: true });
+        const previewCtx = previewCanvas.getContext('2d', { willReadFrequently: true });
+        const resultCtx = resultCanvas.getContext('2d');
+
+        // 画板设置
+        ctx.fillStyle = 'white';
+        ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+        ctx.lineWidth = 10;
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = 'black';
+
+        // 绘图逻辑
+        let isDrawing = false;
+        drawCanvas.addEventListener('mousedown', startDrawing);
+        drawCanvas.addEventListener('mousemove', draw);
+        drawCanvas.addEventListener('mouseup', endDrawing);
+        drawCanvas.addEventListener('mouseout', endDrawing);
+
+        function startDrawing(e) {
+            isDrawing = true;
+            ctx.beginPath();
+            const [x, y] = getMousePos(e);
+            ctx.moveTo(x, y);
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+            const [x, y] = getMousePos(e);
+            ctx.lineTo(x, y);
+            ctx.stroke();
+        }
+
+        function endDrawing() {
+            isDrawing = false;
+            ctx.closePath();
+            updatePreview();
+        }
+
+        function getMousePos(e) {
+            const rect = drawCanvas.getBoundingClientRect();
+            return [e.clientX - rect.left, e.clientY - rect.top];
+        }
+
+        // 清除画板
+        function clearCanvas() {
+            ctx.fillStyle = 'white';
+            ctx.fillRect(0, 0, drawCanvas.width, drawCanvas.height);
+            updatePreview();
+            resultCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
+        }
+
+        // 更新预览
+        function updatePreview() {
+            // 清除预览画布
+            previewCtx.fillStyle = 'white';
+            previewCtx.fillRect(0, 0, previewCanvas.width, previewCanvas.height);
+            
+            // 将绘图缩放到28x28
+            previewCtx.drawImage(drawCanvas, 0, 0, previewCanvas.width, previewCanvas.height);
+        }
+
+        // 图像预处理
+        function preprocessImage() {
+            // 确保预览已更新
+            updatePreview();
+            
+            // 获取28x28像素数据
+            const imgData = previewCtx.getImageData(0, 0, previewCanvas.width, previewCanvas.height);
+            const data = new Float32Array(previewCanvas.width * previewCanvas.height);
+
+            // 转换为灰度并归一化 (RGB转灰度: 0.299R + 0.587G + 0.114B)
+            for (let i = 0; i < imgData.data.length; i += 4) {
+                const r = imgData.data[i];
+                const g = imgData.data[i + 1];
+                const b = imgData.data[i + 2];
+                
+                // 计算灰度值
+                const gray = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+                
+                // 反转颜色 (MNIST数据集是黑底白字，我们的画布是白底黑字)
+                data[i / 4] = 1 - gray;
+            }
+            
+            return data;
+        }
+
+        // 立即处理和预测
+        async function processAndPredict() {
+            const inputData = preprocessImage();
+            console.log("发送到后端的数据:", inputData); // 调试用
+            const probabilities = await modelPredict(inputData);
+            drawResults(probabilities);
+        }
+
+        // 调后端接口，返回数据
+        async function modelPredict(data) {
+            try {
+                const response = await fetch('http://127.0.0.1:3000/random_array', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(Array.from(data))
+                });
+
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
+                const probabilities = await response.json();
+                return probabilities;
+            } catch (error) {
+                console.error('Error during prediction:', error);
+                // 测试用：返回随机概率
+                return Array.from({length: 10}, () => Math.random());
+            }
+        }
+
+        // 绘制柱状图
+        function drawResults(probabilities) {
+            resultCtx.clearRect(0, 0, resultCanvas.width, resultCanvas.height);
+
+            const maxProb = Math.max(...probabilities);
+            const barWidth = 30;
+            // 增大柱子之间的间距
+            const spacing = 20;
+
+            // 计算横轴直线的终点横坐标
+            const endX = 50 + probabilities.length * (barWidth + spacing);
+
+            // 绘制坐标轴
+            resultCtx.beginPath();
+            // 为纵坐标和柱状图之间留出更多空间
+            resultCtx.moveTo(50, 30);
+            resultCtx.lineTo(50, 300);
+            resultCtx.lineTo(endX, 300);
+            resultCtx.strokeStyle = 'black';
+            resultCtx.stroke();
+
+            // 绘制纵坐标刻度
+            for (let i = 0; i <= 1; i += 0.1) {
+                const y = 300 - i * 270;
+                resultCtx.fillText(i.toFixed(1), 20, y + 5);
+                resultCtx.beginPath();
+                resultCtx.moveTo(50, y);
+                resultCtx.lineTo(55, y);
+                resultCtx.stroke();
+            }
+
+            // 确保probabilities数组有10个元素
+            if (probabilities.length === 10) {
+                // 找出最大概率的索引
+                const maxIndex = probabilities.indexOf(maxProb);
+                
+                probabilities.forEach((prob, i) => {
+                    const height = (prob / maxProb) * 270;
+                    // 调整柱子的起始横坐标，确保10个柱子均匀分布
+                    const x = i * (barWidth + spacing) + 50;
+
+                    // 高亮最可能的数字
+                    resultCtx.fillStyle = (i === maxIndex) ? 'rgb(255,99,71)' : 'rgb(36,122,191)';
+                    resultCtx.fillRect(x, 300 - height, barWidth, height);
+
+                    // 绘制数字标签
+                    resultCtx.fillStyle = 'black';
+                    resultCtx.font = '14px Arial';
+                    resultCtx.fillText(i, x + 10, 320);
+                    
+                    // 显示概率值
+                    resultCtx.font = '10px Arial';
+                    resultCtx.fillText((prob * 100).toFixed(1) + '%', x, 300 - height - 5);
+                });
+                
+                // 显示预测结果
+                resultCtx.font = 'bold 16px Arial';
+                resultCtx.fillText(`预测结果: ${maxIndex} (置信度: ${(maxProb * 100).toFixed(1)}%)`, 50, 20);
+            } else {
+                console.error('Probabilities array should have 10 elements.');
+            }
+        }
+
+        // 初始预览
+        updatePreview();
+
+        // 定时处理 (每5秒)
+        setInterval(processAndPredict, 50);
+    </script>
+</body>
+
+</html>
