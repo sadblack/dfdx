@@ -88,7 +88,7 @@ fn main() {
     println!("Loading mnist from args[1] = {mnist_path}");
     println!("Override mnist path with `cargo run --example 12-mnist -- <path to mnist>`");
 
-    let dev = AutoDevice::default();
+    let dev = Device::default();
     let mut rng = StdRng::seed_from_u64(0);
 
     // initialize model, gradients, and optimizer
@@ -145,7 +145,7 @@ fn main() {
     //保存权重
     #[cfg(feature = "safetensors")]
     model
-        .save_safetensors("12-mnist.safetensors")
+        .save_safetensors("13-mnist.safetensors")
         .expect("failed to save model");
 }
 

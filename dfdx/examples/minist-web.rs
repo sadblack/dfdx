@@ -32,7 +32,8 @@ async fn random_array(
     State<
         Arc<
             (
-                (Linear<Const<784>, Const<512>, f32, Cpu>, ReLU), (Linear<Const<512>, Const<128>, f32, Cpu>, ReLU), 
+                (Linear<Const<784>, Const<512>, f32, Cpu>, ReLU), 
+                (Linear<Const<512>, Const<128>, f32, Cpu>, ReLU), 
                 (Linear<Const<128>, Const<32>, f32, Cpu>, ReLU), 
                 Linear<Const<32>, Const<10>, f32, Cpu>
             )
@@ -83,7 +84,8 @@ async fn main() {
     let model: 
     Arc<
         (
-            (Linear<Const<784>, Const<512>, f32, Cpu>, ReLU), (Linear<Const<512>, Const<128>, f32, Cpu>, ReLU), 
+            (Linear<Const<784>, Const<512>, f32, Cpu>, ReLU),
+            (Linear<Const<512>, Const<128>, f32, Cpu>, ReLU),
             (Linear<Const<128>, Const<32>, f32, Cpu>, ReLU), 
             Linear<Const<32>, Const<10>, f32, Cpu>
         )
@@ -189,13 +191,6 @@ fn load_model() -> ((Linear<Const<784>, Const<512>, f32, Cpu>, ReLU), (Linear<Co
 
 
     /*
-        1. 怎么把图片转为矩阵
-        2. 为什么转为 32 * 784 的矩阵。32 的意思是一次处理 32张，每行代表一张图片。使用的时候，只需保证 行是784就可以，如果输入列是1，输出的列也是 1
-        3. 优化策略是什么
-        4. 为什么选这些层
-        5. loss 怎么算的
-        6. 输出的是矩阵，怎么判断是哪个数字
-        7. 保存的权重，怎么用
 
         我训练得到了一个mnist的权重文件，名字叫 test.safetensors，1m多，想在浏览器里运行。我想写一个页面, 可以让用户画一个数字，然后识别出来。
         这个页面分为三个部分，
